@@ -79,6 +79,13 @@ Although not recommended, you even can set the include-statment inside some incl
 ```
 To redirect the output is naturally on your own!
 
+If you want to debug the script it might be handy to add the "-t" commandline option and increase the logging verbosity:
+```
+/usr/bin/perl -d logfile.pl -t -l -v 6 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/av_logfile.stderr 1>>~/av_logfile.stdout
+```
+The advantage of the "-t" option is, that most of the configuration files are fetched from the "tmp"-directory given in the ini-file.
+Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--config".
+
 Allowed commandline options:
 ```
 sub av_help

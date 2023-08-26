@@ -69,8 +69,33 @@ filename: from ini-file
 include logfile_mail.conf
 ```
 
-At any position, you can set an "include <filename>.conf"-statement. This enables you to keep the regex definitions valid for a specific logfile in a separate file, since the conf-file can become a big file with lots of lines.
+At any position, you can set an ```include <filename>.conf```-statement. This enables you to keep the regex definitions valid for a specific logfile in a separate file, since the conf-file can become a big file with lots of lines.
 Although not recommended, you even can set the include-statment inside some included conf-file. So the include-statement is working recursively.
 
 
 ## how to call the script
+```
+/usr/bin/perl logfile.pl -l -v 4 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/av_logfile.stderr 1>>~/av_logfile.stdout
+```
+To redirect the output is naturally on your own!
+
+Allowed commandline options:
+```
+sub av_help
+{
+  print "Usage of script:" . "\n";
+  print "xxx.pl -b|--bot <bot token> --logfile <path of logfile> [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Channel ID>] [--telegram|--notelegram] [-v [0-6], --verbose [0-6]]" . "\n";
+  print "what the options mean:" . "\n";
+  print "--bot := TELEGRAM Bot Token, mandatory" . "\n";
+  print "  -h, --help := this information" . "\n";
+  print "  -f, --logfiles := logfiles to process, comma separated list. Normally the list of files comes from the ini-file" . "\n";
+  print "  -l, --logging := log all output to file defiled by --logfile" . "\n";
+  print "  -t, --test := test mode on" . "\n";
+  print "  -c, --config := ini-file to use" . "\n";
+  print "  -r, --regex := regex-file to use" . "\n";
+  print "--telegram | --notelegram := whether messages via TELEGRAM Channel shall be sent" . "\n";
+  print "--chatid := TELEGRAM Channel-ID. Normally this comes from the ini-file" . "\n";
+  print "  -v [0-6], --verbose [0-6] := verbose logging, STANDARD Loglevel is set to 4" . "\n";
+}
+```
+

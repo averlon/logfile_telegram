@@ -105,4 +105,29 @@ sub av_help
   print "  -v [0-6], --verbose [0-6] := verbose logging, STANDARD Loglevel is set to 4" . "\n";
 }
 ```
+## issue with TELEGRAM Bot number of messages
+You might know, that you are only allowed to send a limited number of messages per timeframe via a TELEGRAM Bot.
+Therefore, the script sometimes crashes with an error message from the TELEGRAM Bot that you have sent too many messages. The message at that time will get lost!
+
+To restart the script automatically, I start the script via a "wrapper", a Shell-Script running in a loop!
+```
+#!/bin/bash
+
+echo $$>./av_logfile_wrapper.pid
+
+while [ 1 ]; do
+  /usr/bin/perl ~/av_logfile.pl -l -v 4 --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' 2>>~/av_logfile.stderr 1>>~/av_logfile.stdout
+  wait
+  sleep 60
+done
+```
+If you want to stop the script or reload the script once you probably have made you own changes you could do:
+```
+kill $(cat /home/<user>/logfile.pid)
+```
+to kill the script and reload it via the wrapper or
+```
+kill $(cat /home/<user>/logfile_wrapper.pid) - to kill the wrapper first and thereby prevent the wrapper to reastart the script once you kill it afterwards
+kill $(cat /home/<user>/logfile.pid)
+```
 

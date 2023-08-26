@@ -1,4 +1,4 @@
-# logfile_telegram
+# logfile_to_telegram
 Logfile analyzer to send result to telegram channel
 
 Perl script

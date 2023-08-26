@@ -75,13 +75,13 @@ Although not recommended, you even can set the include-statment inside some incl
 
 ## how to call the script
 ```
-/usr/bin/perl logfile.pl -l -v 4 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/av_logfile.stderr 1>>~/av_logfile.stdout
+/usr/bin/perl logfile.pl -l -v 4 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
 ```
 To redirect the output is naturally on your own!
 
 If you want to debug the script it might be handy to add the "-t" commandline option and increase the logging verbosity:
 ```
-/usr/bin/perl -d logfile.pl -t -l -v 6 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/av_logfile.stderr 1>>~/av_logfile.stdout
+/usr/bin/perl -d logfile.pl -t -l -v 6 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
 ```
 The advantage of the "-t" option is, that most of the configuration files are fetched from the "tmp"-directory given in the ini-file.
 Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--config".
@@ -116,7 +116,7 @@ To restart the script automatically, I start the script via a "wrapper", a Shell
 echo $$>./av_logfile_wrapper.pid
 
 while [ 1 ]; do
-  /usr/bin/perl ~/av_logfile.pl -l -v 4 --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' 2>>~/av_logfile.stderr 1>>~/av_logfile.stdout
+  /usr/bin/perl ~/av_logfile.pl -l -v 4 --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
   wait
   sleep 60
 done

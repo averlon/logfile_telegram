@@ -8,3 +8,8 @@ You can filter the logfile entries by some regex expressions, stored in a config
 All logfile entries passing the regex check will get sent to a telegram channel, configured in a ini-file.
 The TELEGRAM Bot token has to be handed over to the script via the command-line option --bot.
 
+## example ini-file
+
+## example regex-conf file
+
+## how to call the script

@@ -116,7 +116,7 @@ To restart the script automatically, I start the script via a "wrapper", a Shell
 echo $$>./av_logfile_wrapper.pid
 
 while [ 1 ]; do
-  /usr/bin/perl ~/av_logfile.pl -l -v 4 --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
+  /usr/bin/perl ~/logfile.pl -l -v 4 --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
   wait
   sleep 60
 done

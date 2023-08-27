@@ -39,6 +39,7 @@ use WWW::Telegram::BotAPI;
 
 use File::Spec;
 use File::Basename;
+#use File::Copy;
 use File::Touch;
 use File::ReadBackwards;
 use File::Tail;
@@ -83,11 +84,14 @@ my $av_fn_REGEX=undef;
 
 my $av_loc_BLOCK="";
 my $av_loc_CONFIG; # Bolean, if a config file has been given at the command line
+#my $av_loc_REGEXFILE="$av_std_DIRNAME/av_logfile_regex.conf";
 my $av_loc_REGEXFILE="";
 my $av_loc_INIFILE="$av_std_DIRNAME/av_logfile.ini"; # this is the STANDARD, but this will probably be changed by commandline options.
 my $av_loc_tgram_CHATID=""; # this is Chat-ID of the Telegram Channel
 my $av_loc_tgram_BOT="";
+#my $av_loc_VERSION=$File::Tail::VERSION;
 my $av_loc_INDEX;
+my $av_loc_TGERROR=undef;
 
 ###
 ### predefined objects
@@ -103,7 +107,9 @@ my $av_obj_TGRAM=undef;
 my $av_tmp_CURRLINE="";
 my $av_tmp_DELETED=0;
 my $av_tmp_DIR="/tmp";
+#my $av_tmp_FILE;
 my $av_tmp_FN;
+#my $av_tmp_INDEX=0;
 my $av_tmp_LINE;
 my $av_tmp_NUMBERFOUND=undef;
 my $av_tmp_OLDLINE="";
@@ -117,8 +123,10 @@ my $av_tmp_logger_CONF="";
 ### Arrays
 ###
 my @av_arr_CHANGES;
+#my @av_arr_FN;
 my @av_arr_LOG4PERLCONF;
 my @av_arr_LOGFILES;
+#my @av_arr_MATCH;
 my @av_arr_PENDING=undef;
 my @av_arr_STRING;
 my @av_arr_TAIL;
@@ -127,6 +135,7 @@ my @av_arr_TAIL;
 ### Hashes
 ###
 my %av_ha_MATRIX=(); # contains an HASHES OF ARRAYS - see: https://perldoc.perl.org/perldsc#HASHES-OF-ARRAYS
+my %av_ha_TGERROR=(); # contains an HASHES OF ARRAYS - see: https://perldoc.perl.org/perldsc#HASHES-OF-ARRAYS
 
 #  ______                _   _                 
 #    ____|              | | (_)                
@@ -370,6 +379,7 @@ if ( $av_std_TEST ) # if TEST, get the regex-file from some temporary directory
 ### regex-conf einlesen
 ###
 
+%av_ha_MATRIX=();
 av_regexfile_read($av_loc_REGEXFILE);
 
 $av_obj_REGEXFILE = File::Modified->new(files=>[$av_loc_REGEXFILE]); # create the object to check if the regexfile gets modified
@@ -416,7 +426,7 @@ if ( $av_std_TELEGRAM )
 {
   if ( $av_std_TEST ) # if TEST, the message is different
   {
-    $av_std_RETVAL = eval
+    unless ( eval
     {
       $av_obj_TGRAM->sendMessage (
         {
@@ -426,11 +436,15 @@ if ( $av_std_TELEGRAM )
             parse_mode => 'HTML',
         }
       )
+    } )
+    {
+      my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
+      $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+      die 'TELEGRAM sendMessage error!';
     }
-    or die 'telegram sendMessage error: ', $av_obj_TGRAM->parse_error->{msg}, "\n";
   }
   else {
-    $av_std_RETVAL = eval
+    unless ( eval
     {
       $av_obj_TGRAM->sendMessage (
         {
@@ -440,8 +454,12 @@ if ( $av_std_TELEGRAM )
             parse_mode => 'HTML',
         }
       )
+    } )
+    {
+      my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
+      $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+      die 'TELEGRAM sendMessage error!';
     }
-    or die 'telegram sendMessage error: ', $av_obj_TGRAM->parse_error->{msg}, "\n";
   }
 }
 
@@ -456,6 +474,7 @@ while (1)
   {
     $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \@av_arr_CHANGES: @av_arr_CHANGES"); # debug
 
+    %av_ha_MATRIX=();
     av_regexfile_read($av_loc_REGEXFILE);
     $av_obj_REGEXFILE->update();
     
@@ -463,7 +482,7 @@ while (1)
 
     if ( $av_std_TELEGRAM )
     {
-      $av_std_RETVAL = eval
+      unless ( eval
       {
         $av_obj_TGRAM->sendMessage (
           {
@@ -473,8 +492,12 @@ while (1)
               parse_mode => 'HTML',
           }
         )
+      } )
+      {
+        my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
+        $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+        die 'TELEGRAM sendMessage error!';
       }
-      or die 'telegram sendMessage error: ', $av_obj_TGRAM->parse_error->{msg}, "\n";
     }
   }
   
@@ -503,7 +526,7 @@ while (1)
       {
         my $line = $av_ha_MATRIX{$av_obj_TMP->{input}}[$i];
         $av_tmp_DELETED=0;
-        $av_obj_LOGGER->trace("Block: $av_loc_BLOCK - \$line: $line");
+        $av_obj_LOGGER->trace("Block: $av_loc_BLOCK - logfile: $av_obj_TMP->{input} - \$line: $line");
         $av_obj_LOGGER->trace("Block: $av_loc_BLOCK - regex: $av_ha_MATRIX{$av_obj_TMP->{input}}[$i]");
         if ( substr($line, 0, 1) eq "." )
         {
@@ -562,7 +585,7 @@ while (1)
         if ( $av_std_TELEGRAM )
         {
           $av_std_RETVAL="";
-          $av_std_RETVAL = eval 
+          unless ( eval 
           {
             $av_obj_TGRAM->sendMessage 
             (
@@ -573,8 +596,20 @@ while (1)
                 parse_mode => 'HTML',
               }
             )
+          } )
+          {
+            my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
+            $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+            if ( $av_loc_TGERROR->{error} == 429 )
+            {
+              $av_loc_TGERROR->{msg} =~ m/(\d{1,3})/;
+              $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
+              sleep($1);
+            }
+            else {
+              die 'TELEGRAM sendMessage error!';
+            }
           }
-          or warn "TELEGRAM Request failed with error '$@', but I'm still alive!";
         }
       }
       $av_tmp_DELETED=0;

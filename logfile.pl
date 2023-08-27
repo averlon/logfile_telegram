@@ -581,10 +581,8 @@ while (1)
         $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - will get sent: $av_tmp_LINE");
         $av_tmp_LINE =~ s/<|>//g;
         $av_tmp_STRING = hostname() . " " . "Logfile: " . "<strong>" . $av_obj_TMP->{input} . "</strong>" . " " . $av_tmp_LINE;
-#        $av_tmp_STRING = "Logfile: " . $av_obj_TMP->{input} . " " . $av_tmp_LINE;
         if ( $av_std_TELEGRAM )
         {
-          $av_std_RETVAL="";
           unless ( eval 
           {
             $av_obj_TGRAM->sendMessage 
@@ -607,6 +605,7 @@ while (1)
               sleep($1);
             }
             else {
+              $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}"); # debug
               die 'TELEGRAM sendMessage error!';
             }
           }

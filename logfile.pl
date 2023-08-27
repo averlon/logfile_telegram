@@ -39,7 +39,6 @@ use WWW::Telegram::BotAPI;
 
 use File::Spec;
 use File::Basename;
-#use File::Copy;
 use File::Touch;
 use File::ReadBackwards;
 use File::Tail;
@@ -84,12 +83,10 @@ my $av_fn_REGEX=undef;
 
 my $av_loc_BLOCK="";
 my $av_loc_CONFIG; # Bolean, if a config file has been given at the command line
-#my $av_loc_REGEXFILE="$av_std_DIRNAME/av_logfile_regex.conf";
 my $av_loc_REGEXFILE="";
 my $av_loc_INIFILE="$av_std_DIRNAME/av_logfile.ini"; # this is the STANDARD, but this will probably be changed by commandline options.
 my $av_loc_tgram_CHATID=""; # this is Chat-ID of the Telegram Channel
 my $av_loc_tgram_BOT="";
-#my $av_loc_VERSION=$File::Tail::VERSION;
 my $av_loc_INDEX;
 
 ###
@@ -106,9 +103,7 @@ my $av_obj_TGRAM=undef;
 my $av_tmp_CURRLINE="";
 my $av_tmp_DELETED=0;
 my $av_tmp_DIR="/tmp";
-#my $av_tmp_FILE;
 my $av_tmp_FN;
-#my $av_tmp_INDEX=0;
 my $av_tmp_LINE;
 my $av_tmp_NUMBERFOUND=undef;
 my $av_tmp_OLDLINE="";
@@ -122,10 +117,8 @@ my $av_tmp_logger_CONF="";
 ### Arrays
 ###
 my @av_arr_CHANGES;
-#my @av_arr_FN;
 my @av_arr_LOG4PERLCONF;
 my @av_arr_LOGFILES;
-#my @av_arr_MATCH;
 my @av_arr_PENDING=undef;
 my @av_arr_STRING;
 my @av_arr_TAIL;

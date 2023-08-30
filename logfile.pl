@@ -84,14 +84,16 @@ my $av_fn_REGEX=undef;
 
 my $av_loc_BLOCK="";
 my $av_loc_CONFIG; # Bolean, if a config file has been given at the command line
-#my $av_loc_REGEXFILE="$av_std_DIRNAME/av_logfile_regex.conf";
 my $av_loc_REGEXFILE="";
 my $av_loc_INIFILE="$av_std_DIRNAME/av_logfile.ini"; # this is the STANDARD, but this will probably be changed by commandline options.
 my $av_loc_tgram_CHATID=""; # this is Chat-ID of the Telegram Channel
 my $av_loc_tgram_BOT="";
-#my $av_loc_VERSION=$File::Tail::VERSION;
 my $av_loc_INDEX;
-my $av_loc_TGERROR=undef;
+
+###
+### FILEHANDLE
+###
+my $av_fh_FILE;
 
 ###
 ### predefined objects
@@ -103,13 +105,15 @@ my $av_obj_REGEXFILE=undef;
 my $av_obj_TAIL=undef;
 my $av_obj_INIFILE=undef;
 my $av_obj_TGRAM=undef;
+my $av_obj_TGERROR=undef;
 
+###
+### for various use
+###
 my $av_tmp_CURRLINE="";
 my $av_tmp_DELETED=0;
 my $av_tmp_DIR="/tmp";
-#my $av_tmp_FILE;
 my $av_tmp_FN;
-#my $av_tmp_INDEX=0;
 my $av_tmp_LINE;
 my $av_tmp_NUMBERFOUND=undef;
 my $av_tmp_OLDLINE="";
@@ -123,11 +127,10 @@ my $av_tmp_logger_CONF="";
 ### Arrays
 ###
 my @av_arr_CHANGES;
-#my @av_arr_FN;
 my @av_arr_LOG4PERLCONF;
 my @av_arr_LOGFILES;
-#my @av_arr_MATCH;
 my @av_arr_PENDING=undef;
+my @av_arr_INCLUDES=();
 my @av_arr_STRING;
 my @av_arr_TAIL;
 
@@ -193,6 +196,7 @@ sub av_regexfile_read
       if ( $av_tmp_LINE =~ /^include\s+(\S+)/ ) # if the line contains an include-statement, perform recursive processing
       {
         $av_tmp_STRING = $1; # $1 contains the filename
+        push(@av_arr_INCLUDES,$av_tmp_STRING); # this is an arrray containing all conf-files included. Reason: all these file must get checked if changes are made
         if ( $av_std_TEST )
         {
           $av_tmp_STRING = "$av_tmp_DIR/$av_tmp_STRING"; # if it is a test the file should come from the directory defined in $av_tmp_DIR
@@ -295,14 +299,15 @@ if ( $av_std_LOGGING )
     $av_obj_FILE = File::Touch->new()->touch("$av_std_LOGFILE"); # create the logfile specified on commandline options
   
     # Datei einlesen
-    open(LOG4PERLCONF, "<", "$av_std_LOG4PERLCONF") 
+    open($av_fh_FILE, "<", "$av_std_LOG4PERLCONF") 
       or die "Couldn't open file $av_std_LOG4PERLCONF, $!";
 
-    while(<LOG4PERLCONF>) {
+    while( readline($av_fh_FILE) ) 
+    {
       chomp($_); # Zeilenende entfernen
       push(@av_arr_LOG4PERLCONF, $_); # in array speichern
     }
-    close(LOG4PERLCONF);
+    close($av_fh_FILE);
 
     # array in scalar (string) umwandeln
     $_=join( "\n", @av_arr_LOG4PERLCONF );
@@ -356,9 +361,9 @@ if ( $av_std_TEST ) # only if not test set the PID into the PID-File
 }
 else
 {
-  open F, ">./av_logfile.pid";
-  print F $$;
-  close F;
+  open($av_fh_FILE, ">./av_logfile.pid");
+  print $av_fh_FILE $$;
+  close($av_fh_FILE);
 }
 
 ###
@@ -382,7 +387,9 @@ if ( $av_std_TEST ) # if TEST, get the regex-file from some temporary directory
 %av_ha_MATRIX=();
 av_regexfile_read($av_loc_REGEXFILE);
 
-$av_obj_REGEXFILE = File::Modified->new(files=>[$av_loc_REGEXFILE]); # create the object to check if the regexfile gets modified
+#$av_obj_REGEXFILE = File::Modified->new(files=>[$av_loc_REGEXFILE]); # create the object to check if the regexfile gets modified
+$av_tmp_STRING = join(",",@av_arr_INCLUDES);
+$av_obj_REGEXFILE = File::Modified->new(files=>[$av_tmp_STRING]); # create the object to check if the regexfile gets modified
 
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_BASENAME: $av_std_BASENAME\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_DIRNAME: $av_std_DIRNAME\n"); # debug
@@ -418,6 +425,7 @@ else {
 #                                                
 #                                                
 $av_loc_BLOCK="Main Processing";
+$av_obj_LOGGER->info("Block: $av_loc_BLOCK - started");
 
 $av_obj_LOGGER->trace("\@av_arr_TAIL: @av_arr_TAIL"); # debug
 
@@ -438,8 +446,8 @@ if ( $av_std_TELEGRAM )
       )
     } )
     {
-      my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
-      $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+      my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+      $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
       die 'TELEGRAM sendMessage error!';
     }
   }
@@ -456,8 +464,8 @@ if ( $av_std_TELEGRAM )
       )
     } )
     {
-      my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
-      $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+      my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+      $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
       die 'TELEGRAM sendMessage error!';
     }
   }
@@ -494,8 +502,8 @@ while (1)
         )
       } )
       {
-        my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
-        $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
+        my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+        $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
         die 'TELEGRAM sendMessage error!';
       }
     }
@@ -596,16 +604,47 @@ while (1)
             )
           } )
           {
-            my $av_loc_TGERROR = $av_obj_TGRAM->parse_error;
-            $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}; Error Type: $av_loc_TGERROR->{type}"); # debug
-            if ( $av_loc_TGERROR->{error} == 429 )
+            my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+            $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; $av_obj_TGERROR->{error}; Error Type: $av_obj_TGERROR->{type}"); # debug
+            if ( $av_obj_TGERROR->{error} == 429 )
             {
-              $av_loc_TGERROR->{msg} =~ m/(\d{1,3})/;
+              $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
               $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
               sleep($1);
+              $av_tmp_STRING = hostname() . " " . "we had to wait for $1 seconds!";
+              if ( $av_std_TELEGRAM )
+              {
+                unless ( eval 
+                {
+                  $av_obj_TGRAM->sendMessage 
+                  (
+                    {
+                      chat_id => $av_loc_tgram_CHATID,
+                      text    => $av_tmp_STRING,
+                      disable_notification => 'true',
+                      parse_mode => 'HTML',
+                    }
+                  )
+                } )
+                {
+                  my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+                  $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{error}; $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
+                  if ( $av_obj_TGERROR->{error} == 429 )
+                  {
+                    $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
+                    $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
+                    sleep($1);
+                    $av_tmp_STRING = hostname() . " " . "we had to wait for $1 seconds!";
+                  }
+                  else {
+                    $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}"); # debug
+                    die 'TELEGRAM sendMessage error!';
+                  }
+                }
+              }
             }
             else {
-              $av_obj_LOGGER->error("TELEGRAM Error: $av_loc_TGERROR->{msg}"); # debug
+              $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}"); # debug
               die 'TELEGRAM sendMessage error!';
             }
           }
@@ -626,4 +665,5 @@ while (1)
 #                                              
 ### end procedure
 $av_loc_BLOCK="End Processing";
+$av_obj_LOGGER->info("Block: $av_loc_BLOCK - ended");
 exit (0);

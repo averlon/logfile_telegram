@@ -385,11 +385,13 @@ if ( $av_std_TEST ) # if TEST, get the regex-file from some temporary directory
 ###
 
 %av_ha_MATRIX=();
+@av_arr_INCLUDES=();
+push(@av_arr_INCLUDES,$av_loc_REGEXFILE);
 av_regexfile_read($av_loc_REGEXFILE);
 
 #$av_obj_REGEXFILE = File::Modified->new(files=>[$av_loc_REGEXFILE]); # create the object to check if the regexfile gets modified
-$av_tmp_STRING = join(",",@av_arr_INCLUDES);
-$av_obj_REGEXFILE = File::Modified->new(files=>[$av_tmp_STRING]); # create the object to check if the regexfile gets modified
+#$av_tmp_STRING = join(",",@av_arr_INCLUDES);
+$av_obj_REGEXFILE = File::Modified->new(files=>\@av_arr_INCLUDES); # create the object to check if the regexfile gets modified
 
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_BASENAME: $av_std_BASENAME\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_DIRNAME: $av_std_DIRNAME\n"); # debug
@@ -483,6 +485,8 @@ while (1)
     $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \@av_arr_CHANGES: @av_arr_CHANGES"); # debug
 
     %av_ha_MATRIX=();
+    @av_arr_INCLUDES=();
+    push(@av_arr_INCLUDES,$av_loc_REGEXFILE);
     av_regexfile_read($av_loc_REGEXFILE);
     $av_obj_REGEXFILE->update();
     
@@ -605,47 +609,33 @@ while (1)
           } )
           {
             my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
-            $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; $av_obj_TGERROR->{error}; Error Type: $av_obj_TGERROR->{type}"); # debug
-            if ( $av_obj_TGERROR->{error} == 429 )
+            
+            $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{error}; $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
+            
+            $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
+            
+            $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
+            
+            sleep($1);
+            $av_tmp_STRING = hostname() . " " . "we had to wait for $1 seconds!";
+            if ( $av_std_TELEGRAM )
             {
-              $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
-              $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
-              sleep($1);
-              $av_tmp_STRING = hostname() . " " . "we had to wait for $1 seconds!";
-              if ( $av_std_TELEGRAM )
+              unless ( eval 
               {
-                unless ( eval 
-                {
-                  $av_obj_TGRAM->sendMessage 
-                  (
-                    {
-                      chat_id => $av_loc_tgram_CHATID,
-                      text    => $av_tmp_STRING,
-                      disable_notification => 'true',
-                      parse_mode => 'HTML',
-                    }
-                  )
-                } )
-                {
-                  my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
-                  $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{error}; $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
-                  if ( $av_obj_TGERROR->{error} == 429 )
+                $av_obj_TGRAM->sendMessage 
+                (
                   {
-                    $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
-                    $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
-                    sleep($1);
-                    $av_tmp_STRING = hostname() . " " . "we had to wait for $1 seconds!";
+                    chat_id => $av_loc_tgram_CHATID,
+                    text    => $av_tmp_STRING,
+                    disable_notification => 'true',
+                    parse_mode => 'HTML',
                   }
-                  else {
-                    $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}"); # debug
-                    die 'TELEGRAM sendMessage error!';
-                  }
-                }
+                )
+              } )
+              {
+                $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}"); # debug
+                die 'TELEGRAM sendMessage error!';
               }
-            }
-            else {
-              $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}"); # debug
-              die 'TELEGRAM sendMessage error!';
             }
           }
         }

@@ -12,15 +12,18 @@
 #
 # Example how to call the script:
 # Remember: --logfile and --bot are mandatory parameters
-# /usr/bin/perl ~/scripts/av_logfile_v037a.pl -l -v 4 --telegram --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT String>'
+# /usr/bin/perl ~/scripts/av_logfile_v037a.pl -l -v 4 --output --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT String>'
 # /usr/bin/perl ~/scripts/av_logfile_v037a.pl -l --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT String>'
 # in case you need to run tests:
-# /usr/bin/perl -d ~/logfile.pl -t -l -v 5 --telegram --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT token>'
-# /usr/bin/perl -d ~/logfile.pl -t -l -v 5 --notelegram --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT token>'
+# /usr/bin/perl -d ~/logfile.pl -t -l -v 5 --output --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT token>'
+# /usr/bin/perl -d ~/logfile.pl -t -l -v 5 --nooutput --logfile <directory>/job_logfile.log --bot '<TELEGRAM BOT token>'
 # 
 # Changelog: 
 # 
 # =====
+# 20231018; File as an optional or additional output besides TELEGRAM added;
+# this includes to have additional commandline parameters
+
 use local::lib; # this will allow a local perl lib
 
 use strict;
@@ -37,14 +40,16 @@ use Sys::Hostname;
 
 use WWW::Telegram::BotAPI;
 
+use DateTime;
+
 use File::Spec;
 use File::Basename;
-#use File::Copy;
 use File::Touch;
 use File::ReadBackwards;
 use File::Tail;
 use File::Modified;
 use IO::All;
+use IO::Handle;
 use Config::IniFiles;
 
 use Log::Log4perl qw(get_logger);
@@ -65,7 +70,6 @@ my $av_std_DIRNAME=dirname($0);
 my $av_std_EXIT=0;
 my $av_std_RETVAL;
 my $av_std_TMP='/tmp';
-my $av_std_TELEGRAM=1;
 my $av_std_LOG4PERLCONF="$av_std_DIRNAME/av_log4perl.conf";
 my $av_std_VERBOSE=4;
 # Loglevel = 0; no logging
@@ -86,18 +90,24 @@ my $av_loc_BLOCK="";
 my $av_loc_CONFIG; # Bolean, if a config file has been given at the command line
 my $av_loc_REGEXFILE="";
 my $av_loc_INIFILE="$av_std_DIRNAME/av_logfile.ini"; # this is the STANDARD, but this will probably be changed by commandline options.
+my $av_loc_TELEGRAM=1; # use TELEGRAM or not; Default: true
 my $av_loc_tgram_CHATID=""; # this is Chat-ID of the Telegram Channel
 my $av_loc_tgram_BOT="";
 my $av_loc_INDEX;
+my $av_loc_OUTPUT=1; # print lines found to defined output or not; either TELEGRAM Channel and/or File; Default: true
+my $av_loc_OUTFILE=undef; # if filename of Output File has been given via commandline parameter, lines will get written to the file
+my $av_loc_EPOCH=DateTime->now( time_zone=>'Europe/Berlin', locale=>'de-DE' )->epoch();
 
 ###
 ### FILEHANDLE
 ###
 my $av_fh_FILE;
+my $av_fh_OUTFILE;
 
 ###
 ### predefined objects
 ###
+my $av_obj_DT=DateTime->now( time_zone=>'Europe/Berlin', locale=>'de-DE' );
 my $av_obj_LOGGER=undef;
 my $av_obj_TMP=undef;
 my $av_obj_FILE=undef;
@@ -106,6 +116,7 @@ my $av_obj_TAIL=undef;
 my $av_obj_INIFILE=undef;
 my $av_obj_TGRAM=undef;
 my $av_obj_TGERROR=undef;
+my $av_obj_OUTFILE=undef;
 
 ###
 ### for various use
@@ -154,7 +165,7 @@ $av_loc_BLOCK="Functions";
 sub av_help
 {
   print "Usage of script:" . "\n";
-  print "xxx.pl -b|--bot <bot token> [--logfile <path of logfile>] [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Channel ID>] [--telegram|--notelegram] [-v [0-6], --verbose [0-6]]" . "\n";
+  print "xxx.pl -b, --bot <bot token> [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Chat ID>] [--output, --nooutput] [--telegram, --notelegram] [-o, --output-file] [-v [0-6], --verbose [0-6]]" . "\n";
   print "what the options mean:" . "\n";
   print "--bot := TELEGRAM Bot Token, mandatory" . "\n";
   print "  -h, --help := this information" . "\n";
@@ -163,8 +174,10 @@ sub av_help
   print "  -t, --test := test mode on" . "\n";
   print "  -c, --config := ini-file to use" . "\n";
   print "  -r, --regex := regex-file to use" . "\n";
-  print "--telegram | --notelegram := whether messages via TELEGRAM Channel shall be sent" . "\n";
   print "--chatid := TELEGRAM Channel-ID. Normally this comes from the ini-file" . "\n";
+  print "--output, --nooutput := whether messages via TELEGRAM Channel or file shall be sent or not" . "\n";
+  print "--telegram, --notelegram := whether messages via TELEGRAM Channel shall be sent" . "\n";
+  print "-o, --output-file := file to send output to instead to send it to a TELEGRAM Channel" . "\n";
   print "  -v [0-6], --verbose [0-6] := verbose logging, STANDARD Loglevel is set to 4" . "\n";
 }
 
@@ -267,17 +280,19 @@ $av_loc_BLOCK="Preparation";
 print "all options: @ARGV\n";
 
 GetOptions (
-"b|bot=s"   => \$av_loc_tgram_BOT,                                     # Telegram BOT Token
-"c|config=s"   => sub { $av_loc_CONFIG = 1; $av_loc_INIFILE=$_[1]; },  # ini-file
-"f|logfiles=s"   => \@av_arr_LOGFILES,                                 # Logfiles to process
-"h|help"   => \&av_help,                                               # help
-"l|logging"   => \$av_std_LOGGING,                                     # logging
-"telegram!"   => \$av_std_TELEGRAM,                                    # Telegram
-"chatid=s"   => \$av_loc_tgram_CHATID,                                 # Telegram Channel
-"logfile=s"  => sub { $av_std_LOGGING = 1; $av_std_LOGFILE=$_[1] },    # logfile to use
-"t|test"   => \$av_std_TEST,                                           # test
-"v|verbose:4"  => \$av_std_VERBOSE,                                    # verbose + loglevel
-"r|regex=s"  => \$av_fn_REGEX,                                         # logfile to use
+"b|bot=s"   => \$av_loc_tgram_BOT,                                             # Telegram BOT Token
+"c|config=s"   => sub { $av_loc_CONFIG = 1; $av_loc_INIFILE=$_[1]; },          # ini-file
+"f|logfiles=s"   => \@av_arr_LOGFILES,                                         # Logfiles to process
+"h|help"   => \&av_help,                                                       # help
+"l|logging"   => \$av_std_LOGGING,                                             # logging
+"output!"   => \$av_loc_OUTPUT,                                                # Output or not
+"telegram!"   => sub { $av_loc_OUTPUT = 1; $av_loc_TELEGRAM = 1 },             # Output or not
+"chatid=s"   => \$av_loc_tgram_CHATID,                                         # Telegram Channel
+"logfile=s"  => sub { $av_std_LOGGING = 1; $av_std_LOGFILE=$_[1] },            # logfile to use
+"o|output-file=s"  => sub { $av_loc_OUTPUT = 1; $av_loc_OUTFILE=$_[1] },       # Output to file instead of TELEGRAM
+"t|test"   => \$av_std_TEST,                                                   # test
+"v|verbose:4"  => \$av_std_VERBOSE,                                            # verbose + loglevel
+"r|regex=s"  => \$av_fn_REGEX,                                                 # logfile to use
 );
 
 #
@@ -366,6 +381,17 @@ else
   close($av_fh_FILE);
 }
 
+if ( defined $av_loc_OUTFILE )
+{
+  # create output-file specified
+  $av_obj_OUTFILE = File::Touch->new()->touch("$av_loc_OUTFILE"); # create the output-file specified on commandline options
+
+  # Datei einlesen
+  open($av_fh_OUTFILE, ">>:encoding(UTF-8)", "$av_loc_OUTFILE") 
+    or die "Couldn't open file $av_loc_OUTFILE, $!";
+  $av_fh_OUTFILE->autoflush;
+}
+
 ###
 ### ini-File einlesen
 ###
@@ -397,11 +423,13 @@ $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_BASENAME: $av_std_BASENAM
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_DIRNAME: $av_std_DIRNAME\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_LOGGING: $av_std_LOGGING\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_LOGFILE: $av_std_LOGFILE\n"); # debug
-$av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_TELEGRAM: $av_std_TELEGRAM\n"); # debug
+$av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_loc_TELEGRAM: $av_loc_TELEGRAM\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_TEST: $av_std_TEST\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_std_VERBOSE: $av_std_VERBOSE\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_loc_REGEXFILE: $av_loc_REGEXFILE\n"); # debug
 $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \@av_arr_LOGFILES: @av_arr_LOGFILES\n"); # debug
+$av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_loc_OUTPUT: $av_loc_OUTPUT\n"); # debug
+$av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_loc_OUTFILE: $av_loc_OUTFILE\n"); # debug
 
 #
 # prepare Telegram Object
@@ -431,44 +459,47 @@ $av_obj_LOGGER->info("Block: $av_loc_BLOCK - started");
 
 $av_obj_LOGGER->trace("\@av_arr_TAIL: @av_arr_TAIL"); # debug
 
-# Start message to TELEGRAM Channel
-if ( $av_std_TELEGRAM )
+# Start message to Output - only to TELEGRAM, not to output-file
+if ( $av_loc_OUTPUT )
 {
-  if ( $av_std_TEST ) # if TEST, the message is different
+  if ( $ av_loc_TELEGRAM )
   {
-    unless ( eval
+    if ( $av_std_TEST ) # if TEST, the message is different
     {
-      $av_obj_TGRAM->sendMessage (
-        {
-            chat_id => $av_loc_tgram_CHATID,
-            text    => hostname() . " " . basename($0) . " " . "TEST started",
-            disable_notification => 'true',
-            parse_mode => 'HTML',
-        }
-      )
-    } )
-    {
-      my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
-      $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
-      die 'TELEGRAM sendMessage error!';
+      unless ( eval
+      {
+        $av_obj_TGRAM->sendMessage (
+          {
+              chat_id => $av_loc_tgram_CHATID,
+              text    => hostname() . " " . basename($0) . " " . "TEST started",
+              disable_notification => 'true',
+              parse_mode => 'HTML',
+          }
+        )
+      } )
+      {
+        my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+        $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
+        die 'TELEGRAM sendMessage error!';
+      }
     }
-  }
-  else {
-    unless ( eval
-    {
-      $av_obj_TGRAM->sendMessage (
-        {
-            chat_id => $av_loc_tgram_CHATID,
-            text    => hostname() . " " . basename($0) . " " . "restarted",
-            disable_notification => 'true',
-            parse_mode => 'HTML',
-        }
-      )
-    } )
-    {
-      my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
-      $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
-      die 'TELEGRAM sendMessage error!';
+    else {
+      unless ( eval
+      {
+        $av_obj_TGRAM->sendMessage (
+          {
+              chat_id => $av_loc_tgram_CHATID,
+              text    => hostname() . " " . basename($0) . " " . "restarted",
+              disable_notification => 'true',
+              parse_mode => 'HTML',
+          }
+        )
+      } )
+      {
+        my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+        $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
+        die 'TELEGRAM sendMessage error!';
+      }
     }
   }
 }
@@ -492,23 +523,27 @@ while (1)
     
     $av_obj_LOGGER->info("Block: $av_loc_BLOCK - $av_loc_REGEXFILE changed; read again!"); # debug
 
-    if ( $av_std_TELEGRAM )
+    if ( $av_loc_OUTPUT )
     {
-      unless ( eval
+      # message only to telegram - not to output-file
+      if ( $av_loc_TELEGRAM )
       {
-        $av_obj_TGRAM->sendMessage (
-          {
-              chat_id => $av_loc_tgram_CHATID,
-              text    => hostname() . " " . "$av_loc_REGEXFILE changed; read again!",
-              disable_notification => 'true',
-              parse_mode => 'HTML',
-          }
-        )
-      } )
-      {
-        my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
-        $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
-        die 'TELEGRAM sendMessage error!';
+        unless ( eval
+        {
+          $av_obj_TGRAM->sendMessage (
+            {
+                chat_id => $av_loc_tgram_CHATID,
+                text    => hostname() . " " . "$av_loc_REGEXFILE changed; read again!",
+                disable_notification => 'true',
+                parse_mode => 'HTML',
+            }
+          )
+        } )
+        {
+          my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+          $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
+          die 'TELEGRAM sendMessage error!';
+        }
       }
     }
   }
@@ -593,32 +628,13 @@ while (1)
         $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - will get sent: $av_tmp_LINE");
         $av_tmp_LINE =~ s/<|>//g;
         $av_tmp_STRING = hostname() . " " . "Logfile: " . "<strong>" . $av_obj_TMP->{input} . "</strong>" . " " . $av_tmp_LINE;
-        if ( $av_std_TELEGRAM )
+
+        if ( $av_loc_OUTPUT )
         {
-          unless ( eval 
+          # write line to TELEGRAM Channel - if
+          if ( $av_loc_TELEGRAM )
           {
-            $av_obj_TGRAM->sendMessage 
-            (
-              {
-                chat_id => $av_loc_tgram_CHATID,
-                text    => $av_tmp_STRING,
-                disable_notification => 'true',
-                parse_mode => 'HTML',
-              }
-            )
-          } )
-          {
-            my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
-            
-            $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{error}; $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
-            
-            $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
-            
-            $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
-            
-            sleep($1);
-            $av_tmp_STRING = hostname() . " " . "we had to wait for $1 seconds!";
-            if ( $av_std_TELEGRAM )
+            if ( DateTime->now( time_zone=>'Europe/Berlin', locale=>'de-DE' )->epoch() ge $av_loc_EPOCH )
             {
               unless ( eval 
               {
@@ -633,10 +649,19 @@ while (1)
                 )
               } )
               {
-                $av_obj_LOGGER->error("TELEGRAM Error: $av_obj_TGERROR->{msg}"); # debug
-                die 'TELEGRAM sendMessage error!';
+                my $av_obj_TGERROR = $av_obj_TGRAM->parse_error;
+                $av_obj_LOGGER->error("TELEGRAM $av_obj_TGERROR->{msg}; Error Type: $av_obj_TGERROR->{type}"); # debug
+                $av_obj_TGERROR->{msg} =~ m/(\d{1,3})/;
+                $av_obj_LOGGER->error("TELEGRAM Error: we have to go sleeping for $1 seconds"); # debug
+                $av_loc_EPOCH += $1;
               }
             }
+          }
+          # write line to output file - if
+          if ( defined $av_loc_OUTFILE )
+          {
+            $av_tmp_STRING = $av_obj_DT->ymd . " " . $av_obj_DT->hms . " " . hostname() . " " . "Logfile: " . $av_obj_TMP->{input} . " " . $av_tmp_LINE;
+            print $av_fh_OUTFILE $av_tmp_STRING;
           }
         }
       }
@@ -644,6 +669,7 @@ while (1)
     }
   }
 }
+close($av_fh_OUTFILE);
 
 #  ______           _   _____                  
 # |  ____|         | | |  __ \                 

@@ -75,13 +75,13 @@ Although not recommended, you even can set the include-statment inside some incl
 
 ## how to call the script
 ```
-/usr/bin/perl logfile.pl -l -v 4 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
+/usr/bin/perl logfile.pl -l -v 4 --output --telegram --logfile job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
 ```
 To redirect the output is naturally on your own!
 
 If you want to debug the script it might be handy to add the "-t" commandline option and increase the logging verbosity:
 ```
-/usr/bin/perl -d logfile.pl -t -l -v 6 --telegram --logfile job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
+/usr/bin/perl -d logfile.pl -t -l -v 6 --output --telegram --logfile job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
 ```
 The advantage of the "-t" option is, that most of the configuration files are fetched from the "tmp"-directory given in the ini-file.
 Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--config".
@@ -91,7 +91,7 @@ Allowed commandline options:
 sub av_help
 {
   print "Usage of script:" . "\n";
-  print "xxx.pl -b|--bot <bot token> --logfile <path of logfile> [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Channel ID>] [--telegram|--notelegram] [-v [0-6], --verbose [0-6]]" . "\n";
+  print "xxx.pl -b, --bot <bot token> [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Chat ID>] [--output, --nooutput] [--telegram, --notelegram] [-o, --output-file] [-v [0-6], --verbose [0-6]]" . "\n";
   print "what the options mean:" . "\n";
   print "--bot := TELEGRAM Bot Token, mandatory" . "\n";
   print "  -h, --help := this information" . "\n";
@@ -100,8 +100,10 @@ sub av_help
   print "  -t, --test := test mode on" . "\n";
   print "  -c, --config := ini-file to use" . "\n";
   print "  -r, --regex := regex-file to use" . "\n";
-  print "--telegram | --notelegram := whether messages via TELEGRAM Channel shall be sent" . "\n";
   print "--chatid := TELEGRAM Channel-ID. Normally this comes from the ini-file" . "\n";
+  print "--output, --nooutput := whether messages via TELEGRAM Channel or file shall be sent or not" . "\n";
+  print "--telegram, --notelegram := whether messages via TELEGRAM Channel shall be sent" . "\n";
+  print "-o, --output-file := file to send output to instead to send it to a TELEGRAM Channel" . "\n";
   print "  -v [0-6], --verbose [0-6] := verbose logging, STANDARD Loglevel is set to 4" . "\n";
 }
 ```
@@ -116,7 +118,7 @@ To restart the script automatically, I start the script via a "wrapper", a Shell
 echo $$>./logfile_wrapper.pid
 
 while [ 1 ]; do
-  /usr/bin/perl ~/logfile.pl -l -v 4 --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' 2>>~/logfile.stderr 1>>~/logfile.stdout
+  /usr/bin/perl ~/logfile.pl -l -v 4 --output --telegram --logfile ~/job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
   wait
   sleep 60
 done

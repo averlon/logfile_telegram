@@ -92,7 +92,7 @@ my $av_loc_REGEXFILE="";
 my $av_loc_INIFILE="$av_std_DIRNAME/av_logfile.ini"; # this is the STANDARD, but this will probably be changed by commandline options.
 my $av_loc_TELEGRAM=1; # use TELEGRAM or not; Default: true
 my $av_loc_tgram_CHATID=""; # this is Chat-ID of the Telegram Channel
-my $av_loc_tgram_BOT="";
+my $av_loc_tgram_BOT=undef;
 my $av_loc_INDEX;
 my $av_loc_OUTPUT=1; # print lines found to defined output or not; either TELEGRAM Channel and/or File; Default: true
 my $av_loc_OUTFILE=undef; # if filename of Output File has been given via commandline parameter, lines will get written to the file
@@ -369,6 +369,9 @@ else {
 
 $av_obj_LOGGER->debug( "started" ); # debug
 
+###
+### chech if TEST - and change some values of variables
+###
 if ( $av_std_TEST ) # only if not test set the PID into the PID-File
 {
   unlink "./av_logfile.pid"; # delete pid-file if TEST
@@ -435,15 +438,18 @@ $av_obj_LOGGER->debug("Block: $av_loc_BLOCK - \$av_loc_OUTFILE: $av_loc_OUTFILE\
 # prepare Telegram Object
 #
 
-if ( defined $av_loc_tgram_BOT )
+if ( $av_loc_OUTPUT )
 {
-  $av_obj_TGRAM = WWW::Telegram::BotAPI->new(
-   token => "$av_loc_tgram_BOT"
-  );
-}
-else {
-  $av_obj_LOGGER->error("Block: $av_loc_BLOCK - TELEGRAM Bot cannot get initialized"); # debug
-  exit(1);
+  if ( $av_loc_TELEGRAM && defined $av_loc_tgram_BOT )
+  {
+    $av_obj_TGRAM = WWW::Telegram::BotAPI->new(
+     token => "$av_loc_tgram_BOT"
+    );
+  }
+  else {
+    $av_obj_LOGGER->error("Block: $av_loc_BLOCK - TELEGRAM Bot cannot get initialized"); # debug
+    exit(1);
+  }
 }
 
 #  __  __       _         _____                  
@@ -462,7 +468,7 @@ $av_obj_LOGGER->trace("\@av_arr_TAIL: @av_arr_TAIL"); # debug
 # Start message to Output - only to TELEGRAM, not to output-file
 if ( $av_loc_OUTPUT )
 {
-  if ( $ av_loc_TELEGRAM )
+  if ( $av_loc_TELEGRAM )
   {
     if ( $av_std_TEST ) # if TEST, the message is different
     {

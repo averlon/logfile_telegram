@@ -86,7 +86,7 @@ If you want to debug the script it might be handy to add the "-t" commandline op
 The advantage of the "-t" option is, that most of the configuration files are fetched from the "tmp"-directory given in the ini-file.
 Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--config".
 
-Allowed commandline options:
+## Allowed commandline options:
 
 ```
 -b <bot token>, --bot <bot token>

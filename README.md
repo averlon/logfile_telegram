@@ -92,6 +92,7 @@ Since the temporary directory is not valid before the ini-file was processed, th
 -b <bot token>, --bot <bot token>
 ```
 TELEGRAM Bot Token
+
 If set, logfile messages will be sent to the TELEGRAM Chat/Channel
 
 ```
@@ -103,6 +104,7 @@ If this commandline options is given, only the Help Message will be printed. All
 -f <comma separated list of logfiles>, --logfiles <comma separated list of logfiles>
 ```
 comma separated list of logfiles to be processed.
+
 Normally, the list of logfiles is defined in the ini-file, but can be overridden by this commandline option.
 
 ```

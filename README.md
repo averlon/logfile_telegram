@@ -87,24 +87,59 @@ The advantage of the "-t" option is, that most of the configuration files are fe
 Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--config".
 
 Allowed commandline options:
+
 ```
-sub av_help
-{
-  print "Usage of script:" . "\n";
-  print "xxx.pl [-b, --bot <bot token>] [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Chat ID>] [-o, --output-file] [-v [0-6], --verbose [0-6]]" . "\n";
-  print "what the options mean:" . "\n";
-  print "--bot := TELEGRAM Bot Token, mandatory" . "\n";
-  print "  -h, --help := this information" . "\n";
-  print "  -f, --logfiles := logfiles to process, comma separated list. Normally the list of files comes from the ini-file" . "\n";
-  print "  -l, --logging := log all output to file defiled by --logfile" . "\n";
-  print "  -t, --test := test mode on" . "\n";
-  print "  -c, --config := ini-file to use" . "\n";
-  print "  -r, --regex := regex-file to use" . "\n";
-  print "--chatid := TELEGRAM Channel-ID. Normally this comes from the ini-file" . "\n";
-  print "-o, --output-file := file to send output to instead to send it to a TELEGRAM Channel" . "\n";
-  print "  -v [0-6], --verbose [0-6] := verbose logging, STANDARD Loglevel is set to 4" . "\n";
-}
+-b <bot token>, --bot <bot token>
 ```
+TELEGRAM Bot Token
+If set, logfile messages will be sent to the TELEGRAM Chat/Channel
+
+```
+-h, --help
+```
+If this commandline options is given, only the Help Message will be printed. All other commandline options are ignored.
+
+```
+-f <comma separated list of logfiles>, --logfiles <comma separated list of logfiles>
+```
+comma separated list of logfiles to be processed.
+Normally, the list of logfiles is defined in the ini-file, but can be overridden by this commandline option.
+
+```
+-l, --logging
+```
+If set, STDOUT and STDERR will be redirected to a file via "log4perl"
+
+```
+-t, --test
+```
+If set, Test-Mode is activated. This implies that some files are fetched from other directories.
+
+```
+-c <filepath>, --config <filepath>
+```
+You can specify a different ini-file to be processed.
+
+```
+-r <filepath>, --regex <filepath>
+```
+You can specify a different regex file to be processed.
+
+```
+--chatid <chatid>
+```
+ChatId of the TELEGRAM Chat where the messages shall be sent to!
+
+```
+-o <filepath>, --output-file <filepath>
+```
+If specified, the logfile messages will be written to defined file.
+
+```
+-v [0-6], --verbose [0-6]
+```
+Level of verbosity of the script.
+
 ## issue with TELEGRAM Bot number of messages
 You might know, that you are only allowed to send a limited number of messages per timeframe via a TELEGRAM Bot.
 Therefore, the script sometimes crashes with an error message from the TELEGRAM Bot that you have sent too many messages. The message at that time will get lost!

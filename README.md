@@ -91,9 +91,9 @@ Since the temporary directory is not valid before the ini-file was processed, th
 ```
 -b <bot token>, --bot <bot token>
 ```
-TELEGRAM Bot Token
+TELEGRAM Bot Token.
 
-If set, logfile messages will be sent to the TELEGRAM Chat/Channel
+If set, logfile messages will be sent to the TELEGRAM Chat/Channel.
 
 ```
 -h, --help
@@ -110,7 +110,7 @@ Normally, the list of logfiles is defined in the ini-file, but can be overridden
 ```
 -l, --logging
 ```
-If set, STDOUT and STDERR will be redirected to a file via "log4perl"
+If set, STDOUT and STDERR will be redirected to a file via "log4perl".
 
 ```
 -t, --test

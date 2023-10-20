@@ -167,16 +167,16 @@ sub av_help
   print "Usage of script:" . "\n";
   print "xxx.pl [-b, --bot <bot token>] [-h, --help] [-f, --logfiles] [-l, --logging] [-t, --test] [-c, --config=<filename>] [-r, --regex=<filename>] [--chatid <Chat ID>] [-o, --output-file] [-v [0-6], --verbose [0-6]]" . "\n";
   print "what the options mean:" . "\n";
-  print "--bot := TELEGRAM Bot Token, mandatory" . "\n";
+  print "  -b, --bot := TELEGRAM Bot Token; if set, all logfile messages will be sent to the TELEGRAM Chat/Channel" . "\n";
   print "  -h, --help := this information" . "\n";
   print "  -f, --logfiles := logfiles to process, comma separated list. Normally the list of files comes from the ini-file" . "\n";
-  print "  -l, --logging := log all output to file defiled by --logfile" . "\n";
-  print "  -t, --test := test mode on" . "\n";
+  print "  -l, --logging := log all output to file given" . "\n";
+  print "  -t, --test := test mode on; This will imply to fetch some file from a temporary directory" . "\n";
   print "  -c, --config := ini-file to use" . "\n";
   print "  -r, --regex := regex-file to use" . "\n";
-  print "--chatid := TELEGRAM Channel-ID. Normally this comes from the ini-file" . "\n";
-  print "-o, --output-file := file to send output to instead to send it to a TELEGRAM Channel" . "\n";
-  print "  -v [0-6], --verbose [0-6] := verbose logging, STANDARD Loglevel is set to 4" . "\n";
+  print "      --chatid := TELEGRAM Channel-ID. Normally this comes from the ini-file" . "\n";
+  print "  -o, --output-file := file to send output to instead to send it to a TELEGRAM Chat/Channel" . "\n";
+  print "  -v [0-6], --verbose [0-6] := verbose logging of the script, Default: 4" . "\n";
 }
 
 sub av_regexfile_read 

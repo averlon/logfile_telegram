@@ -26,6 +26,11 @@ FILE5=/var/log/auth.log
 tmp=/tmp
 regex=logfile_regex.conf
 chatid=-00000
+
+[TEST]
+tmp=/tmp
+regex=av_test_regex.conf
+chatid=-00000
 ```
 
 ## example regex-conf file
@@ -35,9 +40,18 @@ filename: from ini-file
 # This file is used to filter logfile messages to be sent to the TELEGRAM Channel
 # Format:
 # - all lines are regex expressions to be compared with the logfile line
-# - the first character (+ or -) defines, if the line not be sent to the TELEGRAM Channel (-) or must be sent (+)
+# - the first character (+ or -) defines, if the line is not be sent to the TELEGRAM Channel (-) or must be sent (+)
 # - alle lines of the logfile which do not match with one of the regex expressions are sent to the TELEGRAM Channel anyway
 # - it could be a good idea to place all (+)-lines first in the block of a logfile
+#
+# -; or -m; will not send messages to TELEGRAM Channel if regex matches
+# +s;<regex1>;<regex2> will send line to TELEGRAM Channel if regex1 matches but sill replace output with regex2 (like perl =~ s/regex1/regex2/) 
+# -s; does not make sence, but if it exists it will be treated as -; or -m;
+#
+# Format: (-|+)[([m]|[s])];
+# Example: -m;<regex>
+# Example: -;<regex>
+# Example: +s;<regex1>;<regex1>
 #
 # The file is split into sections. Each section, represented by [<filename of a logfile>], contain the regex expressions relevant for this logfile.
 # So you can and have to define regex expressions per logfile.
@@ -49,23 +63,22 @@ filename: from ini-file
 # Syslog; Logfile: /var/log/syslog
 ##################################################
 
-+Startup finished
++;Startup finished
+#
+#-acpid\[\d{1,}\].*
 
--kernel.*
++s;anacron\[\d{1,}\]: Will run job `cron\.daily' in 5 min;new text to send to output
 
--acpid\[\d{1,}\].*
-
--anacron\[\d{1,}\]: Will run job `cron\.daily' in 5 min
--anacron\[\d{1,}\]: Job `cron\.daily' started
--anacron\[\d{1,}\]: Job `cron\.daily' terminated
--anacron\[\d{1,}\]: Job `cron\.weekly' started
--anacron\[\d{1,}\]: Job `cron\.weekly' terminated
--anacron\[\d{1,}\]: Jobs will be executed sequentially
--anacron\[\d{1,}\]: Updated timestamp for job `cron\.daily'.*
--anacron\[\d{1,}\]: Updated timestamp for job `cron\.weekly'.*
--anacron\[\d{1,}\]: Anacron .* started on.*
--anacron\[\d{1,}\]: Normal exit \(\d{1,} job run\)
--anacron\[\d{1,}\]: Normal exit \(\d{1,} jobs run\)
+-;anacron\[\d{1,}\]: Job `cron\.daily' started
+-;anacron\[\d{1,}\]: Job `cron\.daily' terminated
+-;anacron\[\d{1,}\]: Job `cron\.weekly' started
+-;anacron\[\d{1,}\]: Job `cron\.weekly' terminated
+-;anacron\[\d{1,}\]: Jobs will be executed sequentially
+-;anacron\[\d{1,}\]: Updated timestamp for job `cron\.daily'.*
+-;anacron\[\d{1,}\]: Updated timestamp for job `cron\.weekly'.*
+-;anacron\[\d{1,}\]: Anacron .* started on 
+-;anacron\[\d{1,}\]: Normal exit \(\d{1,} job run\)
+-;anacron\[\d{1,}\]: Normal exit \(\d{1,} jobs run\)
 include logfile_mail.conf
 ```
 
@@ -75,16 +88,15 @@ Although not recommended, you even can set the include-statment inside some incl
 
 ## how to call the script
 ```
-/usr/bin/perl logfile.pl -l -v 4 --logfile job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
+/usr/bin/perl logfile.pl -l -v 4 --logfile /var/log/syslog --bot '<telegram bot token>' --output-file /var/log/av_logfile.log
 ```
-To redirect the output is naturally on your own!
 
 If you want to debug the script it might be handy to add the "-t" commandline option and increase the logging verbosity:
 ```
-/usr/bin/perl -d logfile.pl -t -l -v 6 --logfile job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
+/usr/bin/perl -d logfile.pl -t -l -v 6 --logfile job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log
 ```
 The advantage of the "-t" option is, that most of the configuration files are fetched from the "tmp"-directory given in the ini-file.
-Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--config".
+Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--ini".
 
 ## Allowed commandline options:
 
@@ -93,17 +105,15 @@ Since the temporary directory is not valid before the ini-file was processed, th
 ```
 TELEGRAM Bot Token.
 
-If set, logfile messages will be sent to the TELEGRAM Chat/Channel.
-
 ```
 -h, --help
 ```
 If this commandline options is given, only the Help Message will be printed. All other commandline options are ignored.
 
 ```
--f <comma separated list of logfiles>, --logfiles <comma separated list of logfiles>
+-f <logfile to process>, --logfile <logfile to process>
 ```
-comma separated list of logfiles to be processed.
+this parameter my occur several times.
 
 Normally, the list of logfiles is defined in the ini-file, but can be overridden by this commandline option.
 
@@ -118,7 +128,7 @@ If set, STDOUT and STDERR will be redirected to a file via "log4perl".
 If set, Test-Mode is activated. This implies that some files are fetched from other directories.
 
 ```
--c <filepath>, --config <filepath>
+-i <filepath>, --ini <filepath>
 ```
 You can specify a different ini-file to be processed.
 
@@ -153,7 +163,7 @@ To restart the script automatically, I start the script via a "wrapper", a Shell
 echo $$>./logfile_wrapper.pid
 
 while [ 1 ]; do
-  /usr/bin/perl ~/logfile.pl -l -v 4 --logfile ~/job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
+  /usr/bin/perl ~/logfile.pl -l -v 4 --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
   wait
   sleep 60
 done

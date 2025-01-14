@@ -1,26 +1,30 @@
 # logfile_to_telegram
-Logfile analyzer to send result to telegram channel
+Logfile analyzer to send result to telegram channel and/or file.
 
 Perl script
-You can monitor one or more linux logfiles, similar as the system command "tail".
+You can monitor one or more linux logfiles, similar as the system command "tail" or "multitail".
 
-You can filter the logfile entries by some regex expressions, stored in a configuration file by logfile. Either stored in the main regex-conf or inserted via "include"-statements from the main regex-conf file.
-All logfile entries passing the regex check will get sent to a telegram channel, configured in a ini-file.
-The TELEGRAM Bot token has to be handed over to the script via the command-line option --bot.
+You can use the script on a single server or, if you have setup a syslog server collecting logfile messages from various systems, you can use it on this system only to process all log messages collected there.
+
+You can filter the logfile entries by some regex expressions, stored in a configuration file per logfile. Either stored in the main regex-conf or inserted via "include"-statements from the main regex-conf file.
+
+Depending on the configuration item initiator, logfile entries will which match the regex check will either get ignored (-; or -m;) or will get sent to the output channel (+; +m;) or even get modified and then sent to the output channel (+s;).
+All logfile entries not matching any configuration item will anyhow get sent to the output channel.
+The TELEGRAM Bot token has to be handed over to the script via the commandline option --bot.
 
 ## example ini-file
 
 filename: "av_logfile.ini"
 
-The configuration file filename can be handed over to the script via the commandline option --config <filename including path>
+The configuration file filename can be handed over to the script via the commandline option -i, --ini <filename including path>
 
 ```
 [LOGFILES]
-FILE1=/var/log/f42240ro.log
-FILE2=/var/log/syslog
-FILE3=/var/log/mail.log
-FILE4=/var/log/named/named.log
-FILE5=/var/log/auth.log
+FILE1=/var/log/syslog
+FILE2=/var/log/mail.log
+FILE3=/var/log/named/named.log
+FILE4=/var/log/auth.log
+FILE5=/var/log/collected.log
 
 [PARAMS]
 tmp=/tmp
@@ -33,8 +37,8 @@ regex=av_test_regex.conf
 chatid=-00000
 ```
 
-## example regex-conf file
-filename: from ini-file
+### example regex-conf file
+### filename: comes from ini-file
 ```
 #####
 # This file is used to filter logfile messages to be sent to the TELEGRAM Channel
@@ -58,16 +62,21 @@ filename: from ini-file
 # There is (currently) no "DEFAULT" set of regex expressions valid for alle logfiles!
 # As you might imagine, lines starting with a "#" are treated as comments!
 #####
+
+# Example for syslog!
 [/var/log/syslog]
 ##################################################
 # Syslog; Logfile: /var/log/syslog
 ##################################################
 
 +;Startup finished
+# if you would like to modify the message it would look like:
++s;.*Startup finished.*;Computer STARTUP done
+# the first match will have precedence!!!
 #
 #-acpid\[\d{1,}\].*
 
-+s;anacron\[\d{1,}\]: Will run job `cron\.daily' in 5 min;new text to send to output
++s;anacron\[\d{1,}\]: Will run job `cron\.daily' in 5 min;new text to send to output channel
 
 -;anacron\[\d{1,}\]: Job `cron\.daily' started
 -;anacron\[\d{1,}\]: Job `cron\.daily' terminated
@@ -88,12 +97,12 @@ Although not recommended, you even can set the include-statment inside some incl
 
 ## how to call the script
 ```
-/usr/bin/perl logfile.pl -l -v 4 --logfile /var/log/syslog --bot '<telegram bot token>' --output-file /var/log/av_logfile.log
+/usr/bin/perl logfile.pl -l -v 4 --bot '<telegram bot token>' [--output-file /var/log/av_logfile.log]
 ```
 
 If you want to debug the script it might be handy to add the "-t" commandline option and increase the logging verbosity:
 ```
-/usr/bin/perl -d logfile.pl -t -l -v 6 --logfile job_logfile.log --bot '<telegram bot token>' --output-file /var/log/av_logfile.log
+/usr/bin/perl -d logfile.pl -t -l -v 6 --bot '<telegram bot token>' [--output-file /var/log/av_logfile.log]
 ```
 The advantage of the "-t" option is, that most of the configuration files are fetched from the "tmp"-directory given in the ini-file.
 Since the temporary directory is not valid before the ini-file was processed, the STANDARD for the temp-directory is "/tmp"! So the ini-file itself is searched there, if you don't use the commandline option "--ini".
@@ -163,12 +172,12 @@ To restart the script automatically, I start the script via a "wrapper", a Shell
 echo $$>./logfile_wrapper.pid
 
 while [ 1 ]; do
-  /usr/bin/perl ~/logfile.pl -l -v 4 --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
+  /usr/bin/perl ./logfile.pl -l -v 4 --bot '<telegram bot token>' --output-file /var/log/av_logfile.log 2>>~/logfile.stderr 1>>~/logfile.stdout
   wait
   sleep 60
 done
 ```
-If you want to stop the script or reload the script once you probably have made you own changes you could do:
+If you want to stop the script or reload the script once you probably have made your own changes you could do:
 ```
 kill $(cat /home/<user>/logfile.pid)
 ```

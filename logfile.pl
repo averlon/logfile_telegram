@@ -83,7 +83,7 @@ my $av_std_VERBOSE=4;
 # Loglevel = 5; debug
 # Loglevel = 6; trace
 
-our $av_std_LOGFILE="$av_std_TMP/job_" . $av_std_BASENAME . ".log";
+our $av_std_LOGFILE="./job_" . $av_std_BASENAME . ".log";
 my $av_std_LOGGING=0;
 my $av_std_TEST=0;
 
@@ -345,14 +345,16 @@ if ( $av_std_LOGGING )
     $av_obj_LOGGER = get_logger();
   }
   # if the log4perl configuration file does not exist, use some minimal standards
-  else {
+  else 
+  {
     Log::Log4perl::Config->utf8( 1 );
     Log::Log4perl->easy_init($ERROR);
     $av_obj_LOGGER = get_logger();
   }
 }
 # if no logging is required via commandline option use some minimal standards
-else {
+else 
+{
   Log::Log4perl::Config->utf8( 1 );
   Log::Log4perl->easy_init($ERROR);
   $av_obj_LOGGER = get_logger();
@@ -375,7 +377,8 @@ if ( Log::Log4perl->initialized() ) # check if correctly initialized
 {
   $av_obj_LOGGER->info("Block: $av_loc_BLOCK - Log::Log4perl seems to be initialized");
 }
-else {
+else 
+{
   print "Block: $av_loc_BLOCK - Log::Log4perl seems not to be initialized";
   exit ($av_std_EXIT);
 }
@@ -383,7 +386,8 @@ else {
 $av_obj_LOGGER->debug( "started" ); # debug
 
 # write pid to file to be able to kill process
-open($av_fh_FILE, ">./av_logfile.pid");
+open($av_fh_FILE, ">./av_logfile.pid")
+  or die "Can't open > ./av_logfile.pid: $!";
 print $av_fh_FILE $$;
 close($av_fh_FILE);
 
@@ -414,7 +418,10 @@ else
 
 if ( $av_std_TEST ) # if TEST, get the regex-file from some temporary directory
 {
-  $av_fn_REGEX="$av_tmp_DIR/av_logfile_regex.conf";
+  if ( -e "$av_tmp_DIR/av_logfile_regex.conf" )
+  {
+    $av_fn_REGEX="$av_tmp_DIR/av_logfile_regex.conf";
+  }
 }
 
 ###
@@ -437,6 +444,7 @@ if ( defined $av_fn_OUTFILE )
 %av_ha_MATRIX=();
 @av_arr_INCLUDES=();
 push(@av_arr_INCLUDES,$av_fn_REGEX);
+
 av_regexfile_read($av_fn_REGEX);
 
 $av_obj_REGEXFILE = File::Modified->new(files=>\@av_arr_INCLUDES); # create the object to check if the regexfile gets modified

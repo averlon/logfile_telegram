@@ -126,8 +126,6 @@ done
 #                                                
 ### main procedure
 
-#cd ~/scripts
-
 echo $$>./av_logfile_wrapper.pid
 
 while [ 1 ]; do
